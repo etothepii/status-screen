@@ -23,15 +23,17 @@ def load_sheet(sheet):
 
 
 def load_latest():
-    return load_sheet(gc.open("Bank Balances").worksheet('Latest'))
+    return load_sheet(gc.open("Bank Balances").worksheet('Latest')).set_index('Account')[['Currency', 'Debit/Credit']]
 
 
 def load_balances():
     balances = load_sheet(gc.open("Bank Balances").worksheet('Balances'))
-    for column in balances.columns:
-        if column == 'Date':
-            continue
+    value_columns = [_ for _ in balances.columns if _ != 'Date']
+    for column in value_columns:
         balances[column] = pd.to_numeric(
             balances[column].str.replace(',', '').str.replace('$', '').str.replace('£', ''), errors='coerce')
-    return balances.fillna(method='ffill').fillna(value=0)
+    return balances.fillna(method='ffill').fillna(value=0).melt(id_vars=["Date"], value_vars=value_columns)
 
+
+def load_data():
+    return load_balances().join(load_latest(), on='variable', how='left')
